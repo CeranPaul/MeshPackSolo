@@ -1,3 +1,3 @@
 # MeshPackSolo
 
-A description of this package.
+Mesh functions that don't use concurrency.
