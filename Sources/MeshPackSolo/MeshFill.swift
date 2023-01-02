@@ -1,8 +1,9 @@
 //
 //  MeshFill.swift
-//  
+//  MeshPackSolo
 //
 //  Created by Paul on 12/22/22.
+//  Copyright © 2023 Ceran Digital Media. All rights reserved.  See LICENSE.md
 //
 
 import Foundation
@@ -11,6 +12,7 @@ import CurvePack
 
 /// Has no properties. Is a collection of static functions
 public class MeshFill   {
+    
     
     /// Build a Mesh of two triangles from four points - using the shorter common edge
     /// Points are assumed to be in CCW order
@@ -192,7 +194,7 @@ public class MeshFill   {
         
         for (xedni, pip) in larger.enumerated()   {
             
-            let separation = TexturePoint.dist(pt1: basePoint, pt2: pip)
+            let separation = Point3D.dist(pt1: basePoint, pt2: pip)
             
             if separation < closestDist   {
                 closestDist = separation
@@ -529,19 +531,19 @@ public class MeshFill   {
         
         for g in (stride(from: 2, through: knit.scales.count, by: 3))   {
             
-            let lengthA = TexturePoint.dist(pt1: knit.verts[g-2], pt2: knit.verts[g-1])
+            let lengthA = Point3D.dist(pt1: knit.verts[g-2], pt2: knit.verts[g-1])
             
             if lengthA < shortest   {
                 shortest = lengthA
             }
             
-            let lengthB = TexturePoint.dist(pt1: knit.verts[g-1], pt2: knit.verts[g])
+            let lengthB = Point3D.dist(pt1: knit.verts[g-1], pt2: knit.verts[g])
             
             if lengthB < shortest   {
                 shortest = lengthB
             }
             
-            let lengthC = TexturePoint.dist(pt1: knit.verts[g], pt2: knit.verts[g-2])
+            let lengthC = Point3D.dist(pt1: knit.verts[g], pt2: knit.verts[g-2])
             
             if lengthC < shortest   {
                 shortest = lengthC
@@ -561,19 +563,19 @@ public class MeshFill   {
         
         for g in (stride(from: 2, through: knit.scales.count, by: 3))   {
             
-            let lengthA = TexturePoint.dist(pt1: knit.verts[g-2], pt2: knit.verts[g-1])
+            let lengthA = Point3D.dist(pt1: knit.verts[g-2], pt2: knit.verts[g-1])
             
             if lengthA > longest   {
                 longest = lengthA
             }
             
-            let lengthB = TexturePoint.dist(pt1: knit.verts[g-1], pt2: knit.verts[g])
+            let lengthB = Point3D.dist(pt1: knit.verts[g-1], pt2: knit.verts[g])
             
             if lengthB > longest   {
                 longest = lengthB
             }
             
-            let lengthC = TexturePoint.dist(pt1: knit.verts[g], pt2: knit.verts[g-2])
+            let lengthC = Point3D.dist(pt1: knit.verts[g], pt2: knit.verts[g-2])
             
             if lengthC > longest   {
                 longest = lengthC
@@ -584,6 +586,5 @@ public class MeshFill   {
         return longest
     }
     
-
     
 }

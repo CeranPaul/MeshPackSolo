@@ -1,9 +1,9 @@
 //
 //  TriangleError.swift
-//  MeshPack
+//  MeshPackSolo
 //
 //  Created by Paul on 9/3/17.
-//  Copyright © 2022 Ceran Digital Media. All rights reserved.
+//  Copyright © 2023 Ceran Digital Media. All rights reserved.
 //
 
 import Foundation

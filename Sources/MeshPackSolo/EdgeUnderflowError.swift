@@ -1,8 +1,9 @@
 //
 //  EdgeUnderflowError.swift
-//  MeshBench14
+//  MeshPackSolo
 //
 //  Created by Paul on 10/13/22.
+//  Copyright © 2023 Ceran Digital Media. All rights reserved.  See LICENSE.md
 //
 
 import Foundation

@@ -1,9 +1,9 @@
 //
 //  EdgeOverflowError.swift
-//  TriGen
+//  MeshPackSolo
 //
-//  Created by Paul Hollingshead on 9/6/17.
-//  Copyright © 2017 Ceran Digital Media. All rights reserved.
+//  Created by Paul on 9/6/17.
+//  Copyright © 2023 Ceran Digital Media. All rights reserved.  See LICENSE.md
 //
 
 import Foundation

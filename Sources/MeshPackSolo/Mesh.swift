@@ -1,9 +1,9 @@
 //
 //  Mesh.swift
-//  MeshPackMinus
+//  MeshPackSolo
 //
 //  Created by Paul on 8/16/22.
-//  Copyright © 2022 Ceran Digital Media. All rights reserved.  See LICENSE.md
+//  Copyright © 2023 Ceran Digital Media. All rights reserved.  See LICENSE.md
 //
 
 import Foundation
@@ -109,7 +109,7 @@ public class Mesh   {
         let ixAlpha = recordVertex(pip: alpha)
         let ixOmega = recordVertex(pip: omega)
 
-        try recordEdge(ixAlpha: ixAlpha, ixOmega: ixOmega)
+        try recordEdge(ixAlpha: ixAlpha, ixOmega: ixOmega)   // With Int arguments
     }
     
     
