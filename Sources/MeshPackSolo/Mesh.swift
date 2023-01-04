@@ -321,10 +321,7 @@ public class Mesh   {
         let base = try! LineSeg(end1: ptA, end2: ptC)
         let crossVec = Vector3D(from: ptB, towards: onboard, unit: true)
         let striker = try! Line(spot: ptB, arrow: crossVec)
-        
-        let onFlag = try Plane.isCoincident(flat: board, pip: onboard)
-        print(onFlag)
-        
+                
         let juncts = try! base.intersect(ray: striker)
         
         guard juncts.count == 1  else  { throw ChainError(onePt: ptC) }
