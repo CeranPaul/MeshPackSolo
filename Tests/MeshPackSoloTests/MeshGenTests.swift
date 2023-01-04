@@ -56,11 +56,6 @@ class MeshGenTests: XCTestCase {
         /// Points that meet the allowable crown criteria
         let lobePts = try! lobeEdge.approximate(allowableCrown: allowableCrown)
         
-        /// Bogus texture values to make a demonstration work
-        let dummyS = lobePts.map( { ($0.x + 5.0) / 10.0 } )
-        
-        let dummyT = lobePts.map( { $0.y / 10.0 + 0.5 } )
-
 
         /// Perpendiculars for each of the lobePts
         var lobePerp = [Vector3D]()
@@ -128,8 +123,6 @@ class MeshGenTests: XCTestCase {
         
         let allowableCrown = 0.010
         
-        let bracelet = Mesh()
-        
         let innerRad = 1.0
         let outerRad = 1.5
         
@@ -155,17 +148,7 @@ class MeshGenTests: XCTestCase {
         circle2Pts.removeLast()
 
         
-        /// Collection of all points used
-        var entireSet = circle1Pts
-        entireSet.append(contentsOf: circle2Pts)
-        
-        let extent = OrthoVol(spots: entireSet)
-        
-        /// Rectangle (in the XY) that encloses the used points
-        let extentRect = CGRect(x: extent.getOrigin().x, y: extent.getOrigin().y, width: extent.getWidth(), height: extent.getHeight())
-                
-
-        try! MeshFill.twistedRings(alpha: circle1Pts, beta: circle2Pts, knit: bracelet)
+        let bracelet = try! MeshFill.twistedRings(alpha: circle1Pts, beta: circle2Pts)
  
         let acreage = MeshFill.getArea(knit: bracelet)
         
@@ -199,7 +182,20 @@ class MeshGenTests: XCTestCase {
         
         XCTAssertEqual(target, acreage, accuracy: 0.010)
         
+        
+        let root2 = try! Arc(ctr: nexus, axis: dir, start: launch, sweep: 1.5 * Double.pi)
+        
+        XCTAssertThrowsError(try MeshGen.genCyl(ring: root2, htgnel: 1.25, allowableCrown: 0.002, normalOutward: false))
+
+        
+        
+        XCTAssertThrowsError(try MeshGen.genCyl(ring: root, htgnel: -1.5, allowableCrown: 0.002, normalOutward: false))
+        
+        XCTAssertThrowsError(try MeshGen.genCyl(ring: root, htgnel: 1.5, allowableCrown: -0.002, normalOutward: false))
+
     }
+    
+    
     
     func testIsClosedChain()   {
         
@@ -305,7 +301,7 @@ class MeshGenTests: XCTestCase {
         
         let simple = Mesh()
         
-        try! MeshFill.meshFromFour(ptA: ptA, ptB: ptB, ptC: ptC, ptD: ptD, knit: simple)
+        try! simple.recordFour(ptA: ptA, ptB: ptB, ptC: ptC, ptD: ptD)
         
         
         let wrap = simple.getBach(tnetni: "Boundary")

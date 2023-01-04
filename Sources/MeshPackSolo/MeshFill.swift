@@ -13,50 +13,7 @@ import CurvePack
 /// Has no properties. Is a collection of static functions
 public class MeshFill   {
     
-    
-    /// Build a Mesh of two triangles from four points - using the shorter common edge
-    /// Points are assumed to be in CCW order
-    /// - Parameters:
-    ///   - ptA:  First point
-    ///   - ptB:  Second point in CCW order
-    ///   - ptC:  Third point
-    ///   - ptD:  Fourth point
-    /// - Throws:
-    ///   - CoincidentPointsError if any of the vertices are duplicates
-    ///   - NonOrthogonalPointError if the vertices seem unusual
-    public static func meshFromFour(ptA: Point3D, ptB: Point3D, ptC: Point3D, ptD: Point3D, knit: Mesh) throws -> Void   {
         
-        let uniqFlag = try! Point3D.isUniquePool(flock: [ptA, ptB, ptC, ptD])   // Known Array size of 4
-        
-        guard uniqFlag  else  { throw CoincidentPointsError(dupePt: ptA) }
-
-        
-        let firstDir = Vector3D(from: ptA, towards: ptB, unit: true)
-        let secondDir = Vector3D(from: ptC, towards: ptD, unit: true)
-                
-        let dirCheck = Vector3D.dotProduct(lhs: firstDir, rhs: secondDir)    // You would want this to be negative
-        
-        guard dirCheck < 0.0  else  { throw NonOrthogonalPointError(trats: ptA) }   // This isn't the clearest Error type
-        
-        
-        let distanceAC = Point3D.dist(pt1: ptA, pt2: ptC)
-        let distanceBD = Point3D.dist(pt1: ptB, pt2: ptD)
-        
-        if distanceAC < distanceBD  {
-            
-            try knit.recordTriple(vertA: ptA, vertB: ptB, vertC: ptC)
-            try knit.recordTriple(vertA: ptC, vertB: ptD, vertC: ptA)
-            
-        }  else  {
-            
-            try knit.recordTriple(vertA: ptB, vertB: ptC, vertC: ptD)
-            try knit.recordTriple(vertA: ptD, vertB: ptA, vertC: ptB)
-
-        }
-        
-    }
-    
-    
     /// Build triangles between two chains and join them to the Mesh.
     /// Should this be modified to accomodate one of the chains being reversed?
     /// - Parameters:
@@ -65,11 +22,13 @@ public class MeshFill   {
     /// - Throws:
     ///     - TinyArrayError if either array contains too few points.
     /// - See: 'testFillChains' in MeshTests
-    public static func fillChains(port: [Point3D], stbd: [Point3D], knit: Mesh) throws   {
+    public static func fillChains(port: [Point3D], stbd: [Point3D]) throws -> Mesh   {
         
         guard port.count > 1 else { throw TinyArrayError(tnuoc: port.count) }
         guard stbd.count > 1 else { throw TinyArrayError(tnuoc: stbd.count) }
 
+        ///The result
+        let knit = Mesh()
         
         /// Total length of a chain
         let portLength = try! Point3D.chainLength(xedni: port.count - 1, chain: port)
@@ -94,8 +53,9 @@ public class MeshFill   {
             portIndex += 1
             stbdIndex += 1
             
-            // Notice that the Mesh is built with the original TexturePoints
-            try! meshFromFour(ptA: port[portIndex], ptB: port[portIndex-1], ptC: stbd[stbdIndex-1], ptD: stbd[stbdIndex], knit: knit)
+            
+            // Fill from the pairs
+            try! knit.recordFour(ptA: port[portIndex], ptB: port[portIndex-1], ptC: stbd[stbdIndex-1], ptD: stbd[stbdIndex])
             
             portDone = portIndex == portCount - 1
             stbdDone = stbdIndex == stbdCount - 1
@@ -154,6 +114,8 @@ public class MeshFill   {
             
         } while !portDone && !stbdDone
         
+        
+        return knit
     }
     
 
@@ -166,14 +128,17 @@ public class MeshFill   {
     ///   - beta: Array of TexturePoint
     /// - Throws:
     ///     - TinyArrayError if either array contains too few points.
-    public static func twistedRings(alpha: [Point3D], beta: [Point3D], knit: Mesh) throws   {
+    public static func twistedRings(alpha: [Point3D], beta: [Point3D]) throws -> Mesh  {
         
         //TODO: Consider expanding this for the case of either ring being reversed. That's a detail to be hidden.
         
         guard alpha.count > 2 else { throw TinyArrayError(tnuoc: alpha.count) }
         guard beta.count > 2 else { throw TinyArrayError(tnuoc: beta.count) }
 
-
+        ///The result
+let knit = Mesh()
+        
+        
         var smaller, larger: [Point3D]
         
         if beta.count < alpha.count   {
@@ -220,11 +185,13 @@ public class MeshFill   {
             
         }
         
-        try! MeshFill.fillChains(port: smaller, stbd: aligned, knit: knit)
+        let band = try! MeshFill.fillChains(port: smaller, stbd: aligned)
+        try! MeshFill.absorb(freshKnit: band, baseKnit: knit)
         
            // This may not get the normals in the desired direction
-        try! MeshFill.meshFromFour(ptA: smaller[smaller.count - 1], ptB: aligned[aligned.count - 1], ptC: aligned[0], ptD: smaller[0], knit: knit)
+        try! knit.recordFour(ptA: smaller[smaller.count - 1], ptB: aligned[aligned.count - 1], ptC: aligned[0], ptD: smaller[0])
         
+        return knit
     }
     
     

@@ -9,7 +9,8 @@
 import Foundation
 import CurvePack
 
-/// A collection of routines to generate details of a Mesh.
+
+/// A collection of routines to generate details of a Mesh. Has no properties.
 public class MeshGen   {
     
     
@@ -83,7 +84,8 @@ public class MeshGen   {
             }
             
             if g > 0   {
-                try! MeshFill.fillChains(port: previousHump, stbd: freshHump, knit: quarterTorus)   // Add a tiny bit of Mesh
+                let band = try! MeshFill.fillChains(port: previousHump, stbd: freshHump)   // Add a tiny bit of Mesh
+                try! MeshFill.absorb(freshKnit: band, baseKnit: quarterTorus)
             }  else  {
                 ringStartHump = freshHump   // Preserve the first hump to be used to close the ring.
             }
@@ -95,8 +97,9 @@ public class MeshGen   {
         
         
         // Close the ring
-        try! MeshFill.fillChains(port: previousHump, stbd: ringStartHump, knit: quarterTorus)
-                
+        let band = try! MeshFill.fillChains(port: previousHump, stbd: ringStartHump)
+        try! MeshFill.absorb(freshKnit: band, baseKnit: quarterTorus)
+        
         return (quarterTorus, outsideBlendRing)
     }
     
@@ -152,7 +155,8 @@ public class MeshGen   {
             depthEdge.append(freshHump.last!)
             
             if xedni > 0   {
-                try! MeshFill.fillChains(port: freshHump, stbd: oldHump, knit: vein)   // I don't understand why this is the ordering that works.
+                let band = try! MeshFill.fillChains(port: freshHump, stbd: oldHump)   // I don't understand why this is the ordering that works.
+                try! MeshFill.absorb(freshKnit: band, baseKnit: vein)
             }
             
             oldHump = freshHump   // Prepare for the next iteration
@@ -173,15 +177,18 @@ public class MeshGen   {
     ///   - normalOutward: Normals away from the axis?
     /// - Returns: Cylindrical boundary
     /// - Throws:
+    ///     - ParameterRangeError for 'ring' with an improper sweep angle
     ///     - NegativeAccuracyError for an improper length or allowableCrown
     /// See 'testGenCyl' in MeshGen.tests
     public static func genCyl(ring: Arc, htgnel: Double, allowableCrown: Double, normalOutward: Bool) throws -> Mesh   {
         
-        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
+        guard ring.getSweepAngle() == Double.pi * 2.0  else  { throw ParameterRangeError(parA: ring.getSweepAngle()) }
         
         guard htgnel > 0.0 else { throw NegativeAccuracyError(acc: htgnel) }
         
+        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
         
+
         /// Maximum aspect ratio for triangles. Should this be made more accessible? Default parameter?
         let maxAspect = 4.0
         
@@ -220,7 +227,8 @@ public class MeshGen   {
             
             let freshPearlsMoved = oldPearlsPerp.map( { $0.transform(xirtam: moveUp) } )
                         
-            try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearlsPerp, knit: tube)
+            let band = try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearlsPerp)
+            try! MeshFill.absorb(freshKnit: band, baseKnit: tube)
             
             oldPearlsPerp = freshPearlsMoved   // Prepare for the next iteration
         }
@@ -631,7 +639,8 @@ public class MeshGen   {
             if g == 0   {
                 latestChain = dipChain
             }  else  {
-                try! MeshFill.fillChains(port: latestChain, stbd: dipChain, knit: knit)
+                let band = try! MeshFill.fillChains(port: latestChain, stbd: dipChain)
+                try! MeshFill.absorb(freshKnit: band, baseKnit: knit)
                 
                 latestChain = dipChain   // Prepare for the next iteration
             }

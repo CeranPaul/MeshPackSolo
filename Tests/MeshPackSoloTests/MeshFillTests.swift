@@ -56,9 +56,7 @@ final class MeshFillTests: XCTestCase {
         port.append(ptB4)
         
         
-        let pirts = Mesh()
-        
-        try! MeshFill.fillChains(port: port, stbd: stbd, knit: pirts)
+        let pirts = try! MeshFill.fillChains(port: port, stbd: stbd)
         
         
         XCTAssertEqual(pirts.verts.count, 8)
@@ -107,9 +105,7 @@ final class MeshFillTests: XCTestCase {
         port.append(ptB5)
         
 
-        let pirts = Mesh()
-        
-        try! MeshFill.fillChains(port: port, stbd: stbd, knit: pirts)
+        let pirts = try! MeshFill.fillChains(port: port, stbd: stbd)
         
         
         XCTAssertEqual(pirts.verts.count, 9)
@@ -122,9 +118,7 @@ final class MeshFillTests: XCTestCase {
         let ptA6 = Point3D(x: 2.8, y: 4.00, z: -0.75)
         stbd.append(ptA6)
         
-        let pirts2 = Mesh()
-        
-        try! MeshFill.fillChains(port: port, stbd: stbd, knit: pirts2)
+        let pirts2 = try! MeshFill.fillChains(port: port, stbd: stbd)
         
         
         XCTAssertEqual(pirts2.verts.count, 11)
@@ -139,9 +133,6 @@ final class MeshFillTests: XCTestCase {
         let allowableCrown = 0.010
         
         
-        /// The generated Mesh
-        let screen = Mesh()
-                
         let refDia = 2.0
         let rise = 0.4
         
@@ -200,8 +191,8 @@ final class MeshFillTests: XCTestCase {
         let insideCylPts = try! insideCylEdge.approximate(allowableCrown: allowableCrown)
         
         
-        
-        try! MeshFill.fillChains(port: insideCylPts, stbd: profilePts, knit: screen)
+        /// The generated Mesh
+        let screen = try! MeshFill.fillChains(port: insideCylPts, stbd: profilePts)
         
         let acreage = MeshFill.getArea(knit: screen)
         
@@ -233,9 +224,7 @@ final class MeshFillTests: XCTestCase {
         XCTAssertEqual(outChain.count, 7)
         
         
-        let pirts = Mesh()
-        
-        try! MeshFill.fillChains(port: inChain, stbd: outChain, knit: pirts)
+        let pirts = try! MeshFill.fillChains(port: inChain, stbd: outChain)
         
         
         XCTAssertEqual(pirts.verts.count, 12)
@@ -243,9 +232,7 @@ final class MeshFillTests: XCTestCase {
         XCTAssertEqual(pirts.scales.count, 30)
         
         
-        let pirtsAway = Mesh()
-        
-        try! MeshFill.fillChains(port: outChain, stbd: inChain, knit: pirtsAway)
+        let pirtsAway = try! MeshFill.fillChains(port: outChain, stbd: inChain)
         
         
         XCTAssertEqual(pirtsAway.verts.count, 12)
@@ -277,9 +264,7 @@ final class MeshFillTests: XCTestCase {
         XCTAssertEqual(nearChain.count, 5)
         
         
-        let pirts = Mesh()
-        
-        try! MeshFill.fillChains(port: nearChain, stbd: farChain, knit: pirts)
+        let pirts = try! MeshFill.fillChains(port: nearChain, stbd: farChain)
         
         
         XCTAssertEqual(pirts.verts.count, 10)
@@ -319,10 +304,8 @@ final class MeshFillTests: XCTestCase {
         circle2Pts.removeLast()
 
                 
-        let bracelet = Mesh()
-                
         /// Build the Mesh from rings whose starting points are clocked relative to each other
-        try! MeshFill.twistedRings(alpha: circle1Pts, beta: circle2Pts, knit: bracelet)
+        let bracelet = try! MeshFill.twistedRings(alpha: circle1Pts, beta: circle2Pts)
  
         
         let area1 = Double.pi * innerRad * innerRad

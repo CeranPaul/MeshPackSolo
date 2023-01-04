@@ -294,13 +294,75 @@ public class Mesh   {
     }
     
     
+    /// Add two triangles from four points to the Mesh of using the shorter common edge
+    /// Order of points will determine the perpendicular direction of the triangles.
+    /// - Parameters:
+    ///   - ptA:  First point
+    ///   - ptB:  Second point
+    ///   - ptC:  Third point
+    ///   - ptD:  Fourth point
+    /// - Throws:
+    ///   - CoincidentPointsError if any of the vertices are duplicates
+    ///   - ChainError if the point order is askew
+    ///   - NonOrthogonalPointError if the vertices seem unusual
+    public func recordFour(ptA: Point3D, ptB: Point3D, ptC: Point3D, ptD: Point3D) throws -> Void   {
+        
+        let uniqFlag = try! Point3D.isUniquePool(flock: [ptA, ptB, ptC, ptD])   // Known Array size of 4
+        
+        guard uniqFlag  else  { throw CoincidentPointsError(dupePt: ptA) }
+
+        
+        let board = try! Plane(alpha: ptA, beta: ptB, gamma: ptC)
+        
+        let onboard = try! Plane.projectToPlane(pip: ptD, enalp: board)
+        
+        
+           //Test whether the points are in a twisted order
+        let base = try! LineSeg(end1: ptA, end2: ptC)
+        let crossVec = Vector3D(from: ptB, towards: onboard, unit: true)
+        let striker = try! Line(spot: ptB, arrow: crossVec)
+        
+        let onFlag = try Plane.isCoincident(flat: board, pip: onboard)
+        print(onFlag)
+        
+        let juncts = try! base.intersect(ray: striker)
+        
+        guard juncts.count == 1  else  { throw ChainError(onePt: ptC) }
+        
+        
+        let firstDir = Vector3D(from: ptA, towards: ptB, unit: true)
+        let secondDir = Vector3D(from: ptC, towards: ptD, unit: true)
+                
+        let dirCheck = Vector3D.dotProduct(lhs: firstDir, rhs: secondDir)    // You would want this to be negative
+        
+        guard dirCheck < 0.0  else  { throw NonOrthogonalPointError(trats: ptA) }   // This isn't the clearest Error type
+        
+        
+        let distanceAC = Point3D.dist(pt1: ptA, pt2: ptC)
+        let distanceBD = Point3D.dist(pt1: ptB, pt2: ptD)
+        
+        if distanceAC < distanceBD  {
+            
+            try self.recordTriple(vertA: ptA, vertB: ptB, vertC: ptC)
+            try self.recordTriple(vertA: ptC, vertB: ptD, vertC: ptA)
+            
+        }  else  {
+            
+            try self.recordTriple(vertA: ptB, vertB: ptC, vertC: ptD)
+            try self.recordTriple(vertA: ptD, vertB: ptA, vertC: ptB)
+
+        }
+        
+    }
+    
+    
     /// Move, scale, or rotate the original.
     /// Changes geometry, but leaves the topology untouched.
     /// See also the copy constructor.
     /// - Parameter xirtam: Transform to do the desired movement, rotation, or scaling.
     public func transform(xirtam: Transform) -> Void   {
         
-        self.verts = self.verts.map( { $0.transform(xirtam: xirtam) } )   // I'm surprised that this is legal. Testing would be good!
+        self.verts = self.verts.map( { $0.transform(xirtam: xirtam) } )   //  Testing would be good!
         
     }
     
