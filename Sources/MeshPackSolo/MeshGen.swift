@@ -14,6 +14,121 @@ import CurvePack
 public class MeshGen   {
     
     
+    //TODO: Should there be a version that adds boots or caps by default?
+    
+    /// Generate a cylinder of a given length. Open ends.
+    /// - Parameters:
+    ///   - ring: Complete circle including orientation
+    ///   - htgnel: Desired length along the axis
+    ///   - allowableCrown: Acceptable deviation from the circle
+    ///   - normalOutward: Normals away from the axis?
+    /// - Returns: Cylindrical boundary
+    /// - Throws:
+    ///     - ParameterRangeError for 'ring' with an improper sweep angle
+    ///     - NegativeAccuracyError for an improper length or allowableCrown
+    /// See 'testGenCyl' in MeshGen.tests
+    public static func genCyl(ring: Arc, htgnel: Double, allowableCrown: Double, normalOutward: Bool) throws -> Mesh   {
+        
+        guard ring.getSweepAngle() == Double.pi * 2.0  else  { throw ParameterRangeError(parA: ring.getSweepAngle()) }
+        
+        guard htgnel > 0.0 else { throw NegativeAccuracyError(acc: htgnel) }
+        
+        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
+        
+
+        /// Maximum aspect ratio for triangles. Should this be made more accessible? Default parameter?
+        let maxAspect = 4.0
+        
+        /// The return value
+        let tube = Mesh()
+        
+                
+        /// Original set of points and normals
+        var oldPearlsPerp = MeshGen.arcTexPts(hoop: ring, allowableCrown: allowableCrown, genRadials: false).0
+                
+        
+        let chordLength = Point3D.dist(pt1: oldPearlsPerp[0], pt2: oldPearlsPerp[1])
+        
+        /// Longest desired step
+        let rawVertStep = chordLength * maxAspect
+        
+        /// Number of rings copied and moved
+        let ringCount = Int(htgnel / rawVertStep + 0.5)
+        
+        let equalStep = htgnel / Double(ringCount)
+        
+        
+        /// Direction of the axis
+        let up = ring.getAxisDir()
+        
+        let deltaX = up.i * equalStep
+        let deltaY = up.j * equalStep
+        let deltaZ = up.k * equalStep
+
+        /// Transform to move up the axis from one ring to another
+        let moveUp = Transform(deltaX: deltaX, deltaY: deltaY, deltaZ: deltaZ)
+        
+        //TODO: Should this be rearranged to take advantage of concurrency?
+        
+        for _ in 1...ringCount   {
+            
+            let freshPearlsMoved = oldPearlsPerp.map( { $0.transform(xirtam: moveUp) } )
+                        
+            let band = try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearlsPerp)
+            
+            if !normalOutward   {
+                band.reverse()
+            }
+            
+            try! MeshFill.absorb(freshKnit: band, baseKnit: tube)
+            
+            oldPearlsPerp = freshPearlsMoved   // Prepare for the next iteration
+        }
+                
+        return tube
+    }
+    
+    
+    /// Generate the triangles inside an Arc. First use was a whole circle at the end of a cylinder.
+    /// - Parameters:
+    ///   - perim: An Arc. For now it is assumed to be a closed circle
+    ///   - allowableCrown: Acceptable deviation from the curve
+    /// - Returns: Small fan-shaped Mesh
+    /// - Throws:
+    ///     - NegativeAccuracyError for a negative allowableCrown
+    /// See 'testCircleFan' in MeshGen.tests
+    public static func circleFan(perim: Arc, reverseNorms: Bool, allowableCrown: Double) throws -> Mesh   {
+        
+        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
+        
+        //TODO: Test with a partial Arc
+        
+        /// The return value
+        let roundCap = Mesh()
+        
+        let edgePtsGeo = try! perim.approximate(allowableCrown: allowableCrown)
+        
+        let pivotGeo = perim.getCenter()
+        
+        for g in 1..<edgePtsGeo.count   {
+            
+            if reverseNorms   {
+                try! roundCap.recordTriple(vertA: pivotGeo, vertB: edgePtsGeo[g], vertC: edgePtsGeo[g-1])
+            }  else  {
+                try! roundCap.recordTriple(vertA: pivotGeo, vertB: edgePtsGeo[g-1], vertC: edgePtsGeo[g])
+            }
+
+//            try! roundCap.recordTriple(vertA: pivotPt, vertB: edgePts[g-1], vertC: edgePts[g])
+        }
+
+            // Because 'approximate' will generate a duplicate start point on a whole circle, the loop will fill a closed circle
+
+        return roundCap
+    }
+    
+    
+    
+    
     /// Build triangles for a fillet ring. Could be defined as a quarter of a torus.
     /// - Parameters:
     ///   - cylDiameter: Size of cylinder
@@ -163,211 +278,6 @@ public class MeshGen   {
         }
         
         return (vein, perpEdge, depthEdge)
-    }
-    
-    
-    
-    //TODO: Should there be a version that adds boots or caps by default?
-    
-    /// Generate a cylinder of a given length. Open ends.
-    /// - Parameters:
-    ///   - ring: Complete circle including orientation
-    ///   - htgnel: Desired length along the axis
-    ///   - allowableCrown: Acceptable deviation from the circle
-    ///   - normalOutward: Normals away from the axis?
-    /// - Returns: Cylindrical boundary
-    /// - Throws:
-    ///     - ParameterRangeError for 'ring' with an improper sweep angle
-    ///     - NegativeAccuracyError for an improper length or allowableCrown
-    /// See 'testGenCyl' in MeshGen.tests
-    public static func genCyl(ring: Arc, htgnel: Double, allowableCrown: Double, normalOutward: Bool) throws -> Mesh   {
-        
-        guard ring.getSweepAngle() == Double.pi * 2.0  else  { throw ParameterRangeError(parA: ring.getSweepAngle()) }
-        
-        guard htgnel > 0.0 else { throw NegativeAccuracyError(acc: htgnel) }
-        
-        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
-        
-
-        /// Maximum aspect ratio for triangles. Should this be made more accessible? Default parameter?
-        let maxAspect = 4.0
-        
-        /// The return value
-        let tube = Mesh()
-        
-                
-        /// Original set of points and normals
-        var oldPearlsPerp = MeshGen.arcTexPts(hoop: ring, allowableCrown: allowableCrown, genRadials: false).0
-                
-        
-        let chordLength = Point3D.dist(pt1: oldPearlsPerp[0], pt2: oldPearlsPerp[1])
-        
-        /// Longest desired step
-        let rawVertStep = chordLength * maxAspect
-        
-        /// Number of rings copied and moved
-        let ringCount = Int(htgnel / rawVertStep + 0.5)
-        
-        let equalStep = htgnel / Double(ringCount)
-        
-        
-        /// Direction of the axis
-        let up = ring.getAxisDir()
-        
-        let deltaX = up.i * equalStep
-        let deltaY = up.j * equalStep
-        let deltaZ = up.k * equalStep
-
-        /// Transform to move up the axis from one ring to another
-        let moveUp = Transform(deltaX: deltaX, deltaY: deltaY, deltaZ: deltaZ)
-        
-        //TODO: Should this be rearranged to take advantage of concurrency?
-        
-        for _ in 1...ringCount   {
-            
-            let freshPearlsMoved = oldPearlsPerp.map( { $0.transform(xirtam: moveUp) } )
-                        
-            let band = try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearlsPerp)
-            try! MeshFill.absorb(freshKnit: band, baseKnit: tube)
-            
-            oldPearlsPerp = freshPearlsMoved   // Prepare for the next iteration
-        }
-        
-        //TODO: Implement a check, or control, of the facet normals to the axis.
-        
-        
-        return tube
-    }
-    
-    
-    /// Generate the triangles inside an Arc. First use was a whole circle at the end of a cylinder.
-    /// - Parameters:
-    ///   - perim: An Arc. For now it is assumed to be a closed circle
-    ///   - allowableCrown: Acceptable deviation from the curve
-    /// - Returns: Small fan-shaped Mesh
-    /// - Throws:
-    ///     - NegativeAccuracyError for a negative allowableCrown
-    /// See 'testCircleFan' in MeshGen.tests
-    public static func circleFan(perim: Arc, reverseNorms: Bool, allowableCrown: Double) throws -> Mesh   {
-        
-        guard allowableCrown > 0.0 else { throw NegativeAccuracyError(acc: allowableCrown) }
-        
-        //TODO: Test with a partial Arc
-        
-        /// The return value
-        let roundCap = Mesh()
-        
-        let edgePtsGeo = try! perim.approximate(allowableCrown: allowableCrown)
-        
-        let pivotGeo = perim.getCenter()
-        
-        for g in 1..<edgePtsGeo.count   {
-            
-            if reverseNorms   {
-                try! roundCap.recordTriple(vertA: pivotGeo, vertB: edgePtsGeo[g], vertC: edgePtsGeo[g-1])
-            }  else  {
-                try! roundCap.recordTriple(vertA: pivotGeo, vertB: edgePtsGeo[g-1], vertC: edgePtsGeo[g])
-            }
-
-//            try! roundCap.recordTriple(vertA: pivotPt, vertB: edgePts[g-1], vertC: edgePts[g])
-        }
-
-            // Because 'approximate' will generate a duplicate start point on a whole circle, the loop will fill a closed circle
-
-        return roundCap
-    }
-    
-    
-    
-    /// Generate texture points around an Arc. The first and last points in a full Arc will be duplicates.
-    /// - Parameters:
-    ///   - hoop: Complete or partial Arc
-    ///   - allowableCrown: Deviation from the Arc that still looks pleasing
-    ///   - genRadials: Whether or not to have radial vectors for each point in the result
-    /// - Returns: TexturePoints and optional radial vectors
-    public static func arcTexPts(hoop: Arc, allowableCrown: Double, genRadials: Bool) -> (pts: [Point3D], perps: [Vector3D]?)   {
-        
-        
-        let arcSweep = hoop.getSweepAngle()   // Is life okay when this is negative?
-
-        
-        let ratio = 1.0 - allowableCrown / hoop.getRadius()
-        
-        /// Step in angle that meets the allowable crown limit
-        let maxSwing =  2.0 * acos(ratio)
-        
-        let count = ceil(abs(arcSweep / maxSwing))
-        
-        /// The increment in angle that results in portions of equal size
-        let angleStep = arcSweep / count
-        
-        /// Points on the Arc. One of the return values
-        var arcPoints = [Point3D]()
-        
-        ///Radial vector for each point. One of the return values
-        var arcRad: [Vector3D]?
-        
-        if genRadials   {
-            arcRad = [Vector3D]()
-        }  else  {
-            arcRad = nil
-        }
-        
-        
-        for index in 1...Int(count)   {   // Notice that this doesn't generate anything for theta of 0.0
-            
-            let theta = Double(index) * angleStep
-            
-            let freshPt = hoop.pointAtAngle(theta: theta)
-            arcPoints.append(freshPt)
-            
-            if genRadials   {
-                var thataway = Vector3D(from: hoop.getCenter(), towards: freshPt)
-                thataway.normalize()
-                
-                arcRad?.append(thataway)
-            }
-            
-        }
-        
-        return (arcPoints, arcRad)
-    }
-    
-
-    /// Determine the major axes from a cloud of points
-    /// This belongs somewhere else, probably in Point3D
-    public func developTransform(cloud: [Point3D]) -> CoordinateSystem   {
-        
-        //TODO: Gee, this needs to be fleshed out.
-        
-        /// Containing volume whose axes are parallel to the global CSYS
-        let alignedBox = OrthoVol(spots: cloud)
-        
-        /// Center of the cloud
-        let nexus = alignedBox.getRotCenter()
-        
-        var xSum = 0.0
-        var ySum = 0.0
-        var zSum = 0.0
-        
-        for pip in cloud   {
-            
-            let xDist = pip.x - nexus.x
-            let yDist = pip.y - nexus.y
-            let zDist = pip.z - nexus.z
-            
-            xSum += xDist * xDist
-            ySum += yDist * yDist
-            zSum += zDist * zDist
-
-        }
-        
-        print("X: " + String(xSum) + "  " + "Y: " + String(ySum) + "  " + "Z: " + String(zSum))
-
-        
-        let local = CoordinateSystem()
-        
-        return local
     }
     
     
@@ -649,6 +559,98 @@ public class MeshGen   {
         
         
         return (innerBoundaryPts, knit, outerBoundaryPts)
+    }
+    
+    
+    /// Generate texture points around an Arc. The first and last points in a full Arc will be duplicates.
+    /// - Parameters:
+    ///   - hoop: Complete or partial Arc
+    ///   - allowableCrown: Deviation from the Arc that still looks pleasing
+    ///   - genRadials: Whether or not to have radial vectors for each point in the result
+    /// - Returns: TexturePoints and optional radial vectors
+    public static func arcTexPts(hoop: Arc, allowableCrown: Double, genRadials: Bool) -> (pts: [Point3D], perps: [Vector3D]?)   {
+        
+        
+        let arcSweep = hoop.getSweepAngle()   // Is life okay when this is negative?
+
+        
+        let ratio = 1.0 - allowableCrown / hoop.getRadius()
+        
+        /// Step in angle that meets the allowable crown limit
+        let maxSwing =  2.0 * acos(ratio)
+        
+        let count = ceil(abs(arcSweep / maxSwing))
+        
+        /// The increment in angle that results in portions of equal size
+        let angleStep = arcSweep / count
+        
+        /// Points on the Arc. One of the return values
+        var arcPoints = [Point3D]()
+        
+        ///Radial vector for each point. One of the return values
+        var arcRad: [Vector3D]?
+        
+        if genRadials   {
+            arcRad = [Vector3D]()
+        }  else  {
+            arcRad = nil
+        }
+        
+        
+        for index in 1...Int(count)   {   // Notice that this doesn't generate anything for theta of 0.0
+            
+            let theta = Double(index) * angleStep
+            
+            let freshPt = hoop.pointAtAngle(theta: theta)
+            arcPoints.append(freshPt)
+            
+            if genRadials   {
+                var thataway = Vector3D(from: hoop.getCenter(), towards: freshPt)
+                thataway.normalize()
+                
+                arcRad?.append(thataway)
+            }
+            
+        }
+        
+        return (arcPoints, arcRad)
+    }
+    
+
+    /// Determine the major axes from a cloud of points
+    /// This belongs somewhere else, probably in Point3D
+    public func developTransform(cloud: [Point3D]) -> CoordinateSystem   {
+        
+        //TODO: Gee, this needs to be fleshed out.
+        
+        /// Containing volume whose axes are parallel to the global CSYS
+        let alignedBox = OrthoVol(spots: cloud)
+        
+        /// Center of the cloud
+        let nexus = alignedBox.getRotCenter()
+        
+        var xSum = 0.0
+        var ySum = 0.0
+        var zSum = 0.0
+        
+        for pip in cloud   {
+            
+            let xDist = pip.x - nexus.x
+            let yDist = pip.y - nexus.y
+            let zDist = pip.z - nexus.z
+            
+            xSum += xDist * xDist
+            ySum += yDist * yDist
+            zSum += zDist * zDist
+
+        }
+        
+        print("X: " + String(xSum) + "  " + "Y: " + String(ySum) + "  " + "Z: " + String(zSum))
+
+        
+        let local = CoordinateSystem()
+        
+        return local
     }
     
     

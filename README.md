@@ -6,4 +6,4 @@ MeshFill is a slightly higher level of utilities. These would never be set up in
 
 MeshGen contains functions of a more practical nature. 
 
-The code isn't included here, but Meshes can be written to STL files.
+The code isn't included here yet, but Meshes can be written to STL files.
