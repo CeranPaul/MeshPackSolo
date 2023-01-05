@@ -134,9 +134,9 @@ public class MeshFill   {
         
         guard alpha.count > 2 else { throw TinyArrayError(tnuoc: alpha.count) }
         guard beta.count > 2 else { throw TinyArrayError(tnuoc: beta.count) }
-
+        
         ///The result
-let knit = Mesh()
+        let knit = Mesh()
         
         
         var smaller, larger: [Point3D]

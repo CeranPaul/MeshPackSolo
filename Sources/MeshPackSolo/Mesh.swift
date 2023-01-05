@@ -364,6 +364,25 @@ public class Mesh   {
     }
     
     
+    ///Change the order of vertex referencing to force the opposite normal for each triangle.
+    ///Modifies the 'scales' Array
+    public func reverse()   {
+        
+        for g in (stride(from: 2, through: self.scales.count, by: 3))   {
+            
+            let alphaPtIndex = self.scales[g-2]
+            let betaPtIndex = self.scales[g-1]
+            let gammaPtIndex = self.scales[g]
+            
+            let bubble = betaPtIndex
+            self.scales[g-1] = self.scales[g]
+            self.scales[g] = bubble
+            
+        }
+            
+    }
+    
+    
     /// Generate LineSegs for the edges that are used exactly twice
     /// - Returns: Array of LineSegs
     /// - See: 'testGetMated' in MeshTests
