@@ -44,10 +44,12 @@ public class MeshGen   {
         
                 
         /// Original set of points and normals
-        var oldPearlsPerp = MeshGen.arcTexPts(hoop: ring, allowableCrown: allowableCrown, genRadials: false).0
-                
+        let oldPearlsPerp = MeshGen.arcTexPts(hoop: ring, allowableCrown: allowableCrown, genRadials: false)
         
-        let chordLength = Point3D.dist(pt1: oldPearlsPerp[0], pt2: oldPearlsPerp[1])
+        var oldPearls = oldPearlsPerp.0   // Use only the Point3D's
+        
+        
+        let chordLength = Point3D.dist(pt1: oldPearls[0], pt2: oldPearls[1])
         
         /// Longest desired step
         let rawVertStep = chordLength * maxAspect
@@ -72,9 +74,9 @@ public class MeshGen   {
         
         for _ in 1...ringCount   {
             
-            let freshPearlsMoved = oldPearlsPerp.map( { $0.transform(xirtam: moveUp) } )
+            let freshPearlsMoved = oldPearls.map( { $0.transform(xirtam: moveUp) } )
                         
-            let band = try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearlsPerp)
+            let band = try! MeshFill.twistedRings(alpha: freshPearlsMoved, beta: oldPearls)
             
             if !normalOutward   {
                 band.reverse()
@@ -82,7 +84,7 @@ public class MeshGen   {
             
             try! MeshFill.absorb(freshKnit: band, baseKnit: tube)
             
-            oldPearlsPerp = freshPearlsMoved   // Prepare for the next iteration
+            oldPearls = freshPearlsMoved   // Prepare for the next iteration
         }
                 
         return tube
@@ -129,12 +131,11 @@ public class MeshGen   {
     
     
     
-    /// Build triangles for a fillet ring. Could be defined as a quarter of a torus.
+    /// Build triangles for a fillet ring near 0.0, 0.0, 0.0. Could be defined as a quarter of a torus.
     /// - Parameters:
     ///   - cylDiameter: Size of cylinder
     ///   - filletRad: Radius for blending curve
     ///   - allowableCrown: Acceptable deviation from a curve
-    ///   - texClosure: Closure to add texture to any point
     /// - Returns: Small mesh
     /// - Throws:
     ///     - NegativeAccuracyError for a negative filletRad or allowableCrown
@@ -147,12 +148,12 @@ public class MeshGen   {
 
         let cylAxis: Vector3D = Vector3D(i: 0.0, j: 0.0, k: 1.0)
         
-        /// A whole circle, merely used for construction
+        /// A whole circle, merely used for construction. Built around the CSYS origin.
         let shaftEndProfile = try! Arc(ctr: Point3D(x: 0.0, y: 0.0, z: 0.0), axis: cylAxis, start: Point3D(x: cylDiameter / 2.0, y: 0.0, z: 0.0), sweep: Double.pi * 2.0)
                 
-        let unusedPoints = try! shaftEndProfile.approximate(allowableCrown: allowableCrown)
+        let circlePoints = try! shaftEndProfile.approximate(allowableCrown: allowableCrown)
         
-        let profileCount = unusedPoints.count - 1
+        let profileCount = circlePoints.count - 1
         
         /// Angle increment between vertices on the cylinder
         let angleIncr = Double.pi * 2.0 / Double(profileCount)
@@ -161,7 +162,7 @@ public class MeshGen   {
         /// The generated set of triangles. The main return value.
         let quarterTorus = Mesh()
         
-        /// Points on the largest diameter.The other return value.
+        /// Tangency points on the largest diameter. The other return value.
         var outsideBlendRing = [Point3D]()
         
         /// Arc points at the beginning of the ring. Needed to close the ring. Generated when loop index is 0.
@@ -179,15 +180,15 @@ public class MeshGen   {
             /// Radial vector for the cylinder
             var cylOutward = Vector3D(i: cos(theta), j: sin(theta), k: 0.0)
             cylOutward.normalize()
-            
-            
-            /// Point on the defining arc at this angle
+                        
+            /// Point on the defining circle at this angle
             let cylPtTheta = Point3D(x: cylOutward.i * cylDiameter / 2.0, y: cylOutward.j * cylDiameter / 2.0, z: 0.0)
             
-            /// Array of Point3D to make up the fillet Arc
+            
+            /// Fillet Arc at the current angle
             let miniArc = try! Arc.edgeFilletArc(pip: cylPtTheta, faceNormalB: cylAxis, faceNormalA: cylOutward, filletRad: filletRad, convex: false, allowableCrown: allowableCrown)
             
-            /// Bare points of the fillet with texture applied.
+            /// Bare points of the fillet.
             var freshHump = try! miniArc.approximate(allowableCrown: allowableCrown)
                         
             if freshHump.count < 4   {
@@ -197,6 +198,7 @@ public class MeshGen   {
 
                 freshHump = [miniArc.getOneEnd(), cee, dee, miniArc.getOtherEnd()]   // Redefine to have a minimum of three segments
             }
+            
             
             if g > 0   {
                 let band = try! MeshFill.fillChains(port: previousHump, stbd: freshHump)   // Add a tiny bit of Mesh
@@ -390,46 +392,6 @@ public class MeshGen   {
     }
     
     
-    /// Generate a concave fillet where the height difference is less than the fillet radius.
-    /// Should this be expanded to cover tall fillets, and ones at an arbitrary angle?
-    /// Does this belong in Arc?
-    /// - Parameters:
-    ///   - guidePip: Point on the guide curve - parallel to 'floor'
-    ///   - outward: Vector perpendicular to the guide curve at 'guidePip'. Parallel to 'floor'
-    ///   - floor: Plane for the tangency of the fillet
-    ///   - filletRadius: Size of the Arc
-    /// - Returns: Small Arc
-    /// - Throws:
-    ///     - NegativeAccuracyError for a negative filletRadius
-    ///     - NonUnitDirectionError for a bad 'outward' vector
-    public static func shortFilletUno(guidePip: Point3D, outward: Vector3D, floor: Plane, filletRadius: Double) throws -> Arc   {
-        
-        guard filletRadius > 0.0 else { throw NegativeAccuracyError(acc: filletRadius) }
-        guard outward.isUnit() else { throw NonUnitDirectionError(dir: outward) }
-
-        /// Used only for the parallelism check
-        let dummyLine = try! Line(spot: guidePip, arrow: outward)
-        guard Plane.isParallel(flat: floor, enil: dummyLine) else { throw NonUnitDirectionError(dir: outward) }   //Needs a better error
-        
-        let guideRelative = Plane.resolveRelativeVec(flat: floor, pip: guidePip)
-        let deltaHeight = guideRelative.perp.length()
-        
-        let theta = asin((filletRadius - deltaHeight) / filletRadius)
-        let deltaHorizontal = cos(theta) * filletRadius
-        
-        let partwayUp = Point3D(base: guidePip, offset: outward * deltaHorizontal)
-        let tanOnPlane = try! Plane.projectToPlane(pip: partwayUp, enalp: floor)
-        
-        let retnec = Point3D(base: tanOnPlane, offset: floor.getNormal() * filletRadius)
-        
-        
-        /// The desired Arc
-        let stunted = try! Arc(center: retnec, end1: guidePip, end2: tanOnPlane, useSmallAngle: true)
-        
-        return stunted
-    }
-    
-    
         // Should this be captured in a closure for use by multiple functions?
     //        /// A short chain that is the return value
     //        var dipChain = [Point3D]()
@@ -458,7 +420,6 @@ public class MeshGen   {
     ///   - slab: Plane that contains all of the tangency points
     ///   - filletRadius: Size of the fillet
     ///   - maxLength: Longest allowable triangle in the fillets
-    ///   - applyTexture: Closure to provide texture coordinates
     ///   - allowableCrown: Acceptable deviation from a curve
     /// - Returns: Mesh plus boundary points
     /// - Throws:
@@ -513,7 +474,7 @@ public class MeshGen   {
         var dips = [Arc]()
         
         for g in 0..<dots.count   {
-            let scallop = try! MeshGen.shortFilletUno(guidePip: dots[g], outward: perps[g], floor: slab, filletRadius: filletRadius)
+            let scallop = try! Arc.shortFillet(spot: dots[g], toCtr: perps[g], floor: slab, filletRadius: filletRadius)
             dips.append(scallop)
         }
 
@@ -560,6 +521,7 @@ public class MeshGen   {
         
         return (innerBoundaryPts, knit, outerBoundaryPts)
     }
+    
     
     
     /// Generate texture points around an Arc. The first and last points in a full Arc will be duplicates.

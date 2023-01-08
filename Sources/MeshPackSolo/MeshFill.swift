@@ -219,7 +219,7 @@ public class MeshFill   {
     
     
     /// Mirror a copy of a portion of boundary around a plane.
-    /// This could be a candidate for using concurrency.
+    /// This could be a candidate for using concurrency. And possibly moving to class Mesh.
     /// - Parameters:
     ///   - enalp: Mirroring plane
     ///   - knit: Source Mesh
